@@ -14,6 +14,7 @@ import billing.TariffTax;
 import schemas.Billing_Data;
 import schemas.Customer_Data;
 import schemas.NADRA_Data;
+import schemas.Tariff_Data;
 
 public class App {
 
@@ -44,7 +45,7 @@ public class App {
     }
 
     public static int calculatePercentage(int percentage, int total) {
-        return (percentage / 100) * total;
+        return (int) ((percentage / 100.0) * total);
     }
 
     public static int checkCNICExpiry(String expiryDate) {
@@ -784,58 +785,137 @@ public class App {
 
                 System.out.println("1. Check Bill against id");
                 System.out.println("2. Check Bill against id & meter type (Advanced)");
+                System.out.println("3. Check Bill estimate");
+                System.out.println("Enter value: ");
                 String ch = scn.nextLine();
-                while (!ch.equals("1") && !ch.equals("2")) {
+                while (!ch.equals("1") && !ch.equals("2") && !ch.equals("3")) {
                     System.out.println("Enter valid value: ");
                     ch = scn.nextLine();
                 }
 
-                System.out.println("Enter your customer id (4 digits): ");
-                cust_id = scn.nextLine();
+                if (ch.equals("3")) {
+                    String m_type = "";
+                    String c_type = "";
+                    String p_units = "";
+                    String r_units = "";
 
-                while (cust_id.length() != 4 || is_nums_only(cust_id) == false) {
-                    System.out.println("Error: Please enter valid id: ");
-                    scn.nextLine();
-                }
+                    System.out.println("Enter your meter type (Single Phase/3 Phase):");
+                    m_type = scn.nextLine();
 
-                System.out.println("Enter CNIC (13 digits): ");
-                CNIC = scn.nextLine();
-
-                while (CNIC.length() != 13 || is_nums_only(CNIC) == false) {
-                    CNIC = scn.nextLine();
-                }
-
-                if (ch.equals("2")) {
-                    System.out.println("Enter your meter type (Single Phase or 3 Phase): ");
-                    meter_type = scn.nextLine();
-                    while (meter_type.equals("Single Phase") == false && meter_type.equals("3 Phase") == false) {
-                        System.out.println("Error: Enter valid type: ");
-                        meter_type = scn.nextLine();
+                    while (m_type.equals("Single Phase") == false && m_type.equals("3 Phase") == false) {
+                        System.out.println("Error! Enter a valid meter type: ");
+                        m_type = scn.nextLine();
                     }
 
-                    System.out.println("Enter current reading (regular): ");
-                    curr_reading_reg = scn.nextLine();
+                    System.out.println("Enter customer type (Domestic/Commercial): ");
+                    c_type = scn.nextLine();
 
-                    while (is_nums_only(curr_reading_reg) == false) {
-                        System.out.println("Error: Enter valid reading (regular): ");
-                        curr_reading_reg = scn.nextLine();
+                    while (c_type.equals("Domestic") == false && c_type.equals("Commercial") == false) {
+                        System.out.println("Error! Enter customer type (Domestic/Commercial): ");
+                        c_type = scn.nextLine();
                     }
 
-                    if (meter_type.equals("3 Phase") == true) {
-                        System.out.println("Enter current reading (peak): ");
-                        curr_reading_peak = scn.nextLine();
+                    System.out.println("Enter Peak Units Consumed: ");
+                    p_units = scn.nextLine();
 
-                        while (is_nums_only(curr_reading_peak) == false) {
-                            System.out.println("Error: Enter valid reading: ");
-                            curr_reading_peak = scn.nextLine();
-                        }
+                    while (is_nums_only(p_units) == false || Integer.parseInt(p_units) < 0) {
+                        System.out.println("Error! Enter valid value: ");
+                        p_units = scn.nextLine();
                     }
 
-                    Billing bill = new Billing();
-                    bill.view_bill(cust_id, CNIC, meter_type, curr_reading_reg, curr_reading_peak);
+                    System.out.println("Enter regular units Consumed: ");
+                    r_units = scn.nextLine();
+
+                    while (is_nums_only(r_units) == false || Integer.parseInt(p_units) < 0) {
+                        System.out.println("Error! Enter valid value: ");
+                        r_units = scn.nextLine();
+                    }
+
+                    if (m_type.equals("Single Phase")) {
+                        m_type = "1 Phase";
+                    }
+
+                    TariffTax tx = new TariffTax();
+                    Tariff_Data td = tx.getTax(m_type, c_type);
+
+                    int peak_price = 0;
+
+                    if (m_type.equals("3 Phase")) {
+                        peak_price = Integer.parseInt(td.peak_unit_price);
+                    }
+
+                    int total_electric = (Integer.parseInt(r_units) * Integer.parseInt(td.reg_unit_price))
+                            + (Integer.parseInt(p_units) * peak_price);
+
+                    int tax_percentage = Integer.parseInt(td.percent_of_Tax);
+
+                    int taxed = total_electric
+                            + calculatePercentage(tax_percentage, total_electric);
+
+                    int tax = calculatePercentage(tax_percentage, total_electric);
+
+                    int final_price = taxed + Integer.parseInt(td.fixed_charges);
+
+                    System.out.println("");
+                    System.out.println("Bill is as under:");
+                    System.out.println("Meter: " + m_type);
+                    System.out.println("Customer: " + c_type);
+                    System.out.println("Electricity Cost: " + total_electric);
+                    System.out.println("Tax (Percent): " + td.percent_of_Tax + "%");
+                    System.out.println("Tax: " + tax);
+                    System.out.println("Fixed Amount: " + td.fixed_charges);
+                    System.out.println("Final Billing Amount: " + final_price);
+                    System.out.println("");
+
                 } else {
-                    Billing bill = new Billing();
-                    bill.view_bill(cust_id, CNIC);
+
+                    System.out.println("Enter your customer id (4 digits): ");
+                    cust_id = scn.nextLine();
+
+                    while (cust_id.length() != 4 || is_nums_only(cust_id) == false) {
+                        System.out.println("Error: Please enter valid id: ");
+                        scn.nextLine();
+                    }
+
+                    System.out.println("Enter CNIC (13 digits): ");
+                    CNIC = scn.nextLine();
+
+                    while (CNIC.length() != 13 || is_nums_only(CNIC) == false) {
+                        CNIC = scn.nextLine();
+                    }
+
+                    if (ch.equals("2")) {
+                        System.out.println("Enter your meter type (Single Phase or 3 Phase): ");
+                        meter_type = scn.nextLine();
+                        while (meter_type.equals("Single Phase") == false && meter_type.equals("3 Phase") == false) {
+                            System.out.println("Error: Enter valid type: ");
+                            meter_type = scn.nextLine();
+                        }
+
+                        System.out.println("Enter current reading (regular): ");
+                        curr_reading_reg = scn.nextLine();
+
+                        while (is_nums_only(curr_reading_reg) == false) {
+                            System.out.println("Error: Enter valid reading (regular): ");
+                            curr_reading_reg = scn.nextLine();
+                        }
+
+                        if (meter_type.equals("3 Phase") == true) {
+                            System.out.println("Enter current reading (peak): ");
+                            curr_reading_peak = scn.nextLine();
+
+                            while (is_nums_only(curr_reading_peak) == false) {
+                                System.out.println("Error: Enter valid reading: ");
+                                curr_reading_peak = scn.nextLine();
+                            }
+                        }
+
+                        Billing bill = new Billing();
+                        bill.view_bill(cust_id, CNIC, meter_type, curr_reading_reg, curr_reading_peak);
+                    } else {
+                        Billing bill = new Billing();
+                        bill.view_bill(cust_id, CNIC);
+                    }
                 }
             }
 
